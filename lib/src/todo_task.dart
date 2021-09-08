@@ -1,13 +1,15 @@
-import 'dart:html';
-
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 // import 'package:flutter/services.dart';
 import 'todos.dart' as d;
 
+const minHours = 1;
+
 class TodoList extends StatefulWidget {
   static String layout = 'en';
   static d.ToDoList? tdl;
+  static Timer? sch;
 
   @override
   _TodoListState createState() => _TodoListState();
@@ -36,6 +38,23 @@ class _TodoListState extends State<TodoList> {
           '${dt.minute.toString().padLeft(2, '0')}:'
           '${dt.second.toString().padLeft(2, '0')}'
       : '';
+
+  DateTime? parseDate(String ds) {
+    if (ds.isEmpty) return null;
+    final dt = ds.trim().split(' ');
+    if (dt.length < 2) return null;
+    final dtl = dt.first
+        .split('.')
+        .map((el) => int.tryParse(el) ?? 0)
+        .toList()
+        .cast<int>();
+    final ttl = dt.last
+        .split(':')
+        .map((el) => int.tryParse(el) ?? 0)
+        .toList()
+        .cast<int>();
+    return DateTime(dtl[2], dtl[1], dtl[0], ttl[0], ttl[1], ttl[2]);
+  }
 
   Widget _buildItem(BuildContext context, int index) {
     final todo = tdl![index];
@@ -94,7 +113,19 @@ class _TodoListState extends State<TodoList> {
     return tdl!;
   }
 
+  void timSvc(Timer? t) {
+    final now = DateTime.now().toUtc();
+    for (int i = 0; i < tdl!.length; i++) {
+      final cd = tdl![i].created;
+      if (!(now.isBefore(cd)) || now.difference(cd).inHours < minHours) {
+        tdl!.setUrgent(tdl![i], true);
+      }
+    }
+  }
+
   Widget build(BuildContext context) {
+    TodoList.sch ??= Timer.periodic(const Duration(minutes: 1), timSvc);
+
     return FutureBuilder<d.ToDoList>(
         future: _load(),
         builder: (BuildContext context, AsyncSnapshot<d.ToDoList> snapshot) {
@@ -143,9 +174,29 @@ class _TodoListState extends State<TodoList> {
           String body = item!.description;
           bool is_done = item!.is_done;
           bool is_urgent = item!.is_urgent;
+          DateTime currentDate = item!.created;
 
           return StatefulBuilder(// StatefulBuilder
               builder: (context, setDialogState) {
+            Future<void> _selectDate(BuildContext context) async {
+              final DateTime? pickedDate = await showDatePicker(
+                  context: context,
+                  initialDate: currentDate,
+                  locale: Locale(layout),
+                  firstDate: DateTime(2015),
+                  lastDate: DateTime(2050));
+              if (pickedDate != null && pickedDate != currentDate)
+                setDialogState(() {
+                  currentDate = DateTime(
+                      pickedDate.year,
+                      pickedDate.month,
+                      pickedDate.day,
+                      currentDate.hour,
+                      currentDate.minute,
+                      currentDate.second);
+                });
+            }
+
             return AlertDialog(
               title: const Text('Task'),
               content: Column(children: [
@@ -214,6 +265,27 @@ class _TodoListState extends State<TodoList> {
                         is_done = checked!;
                       });
                     }),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    TextField(
+                      controller:
+                          TextEditingController(text: formatDate(currentDate)),
+                      decoration:
+                          const InputDecoration(labelText: 'Task title'),
+                      onChanged: (val) {
+                        currentDate = parseDate(val) ?? DateTime(2020);
+                      },
+                    ),
+                    SizedBox(
+                      height: 20.0,
+                    ),
+                    TextButton(
+                      onPressed: () => _selectDate(context),
+                      child: Text('Select date'),
+                    ),
+                  ],
+                ),
               ]),
               actions: <Widget>[
                 // add button
@@ -227,14 +299,16 @@ class _TodoListState extends State<TodoList> {
                         ..is_urgent = is_urgent
                         ..is_done = is_done
                         ..title = title
-                        ..description = body;
+                        ..description = body
+                        ..created = currentDate;
 
                       if (tdl!.indexOf(item!) == -1)
                         tdl!.add(item!);
                       else
                         tdl!
                           ..setUrgent(item!, is_urgent)
-                          ..setDone(item!, is_done);
+                          ..setDone(item!, is_done)
+                          ..setCreated(item!, currentDate);
                     });
                   },
                 ),

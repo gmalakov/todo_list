@@ -17,8 +17,12 @@ class ToDoItem {
   bool is_done = false;
   int created_at = 0;
 
-  DateTime get created =>
-      DateTime.fromMillisecondsSinceEpoch(created_at, isUtc: true).toLocal();
+  DateTime get created {
+    final cr =
+        DateTime.fromMillisecondsSinceEpoch(created_at, isUtc: true).toLocal();
+    if (cr.year > 2050) return DateTime.now();
+      else return cr;
+  }
 
   set created(DateTime dt) => created_at = dt.toUtc().millisecondsSinceEpoch;
 
@@ -61,6 +65,14 @@ class ToDoList {
     if (idx < 0) return false;
 
     for (final l in _items.keys) _items[l]!.removeAt(idx);
+    return true;
+  }
+
+  bool setCreated(ToDoItem o, DateTime ct) {
+    final idx = indexOf(o);
+    if (idx < 0) return false;
+
+    for (final l in _items.keys) _items[l]![idx].created = ct;
     return true;
   }
 
