@@ -117,9 +117,9 @@ class _TodoListState extends State<TodoList> {
     final now = DateTime.now().toUtc();
     for (int i = 0; i < tdl!.length; i++) {
       final cd = tdl![i].created;
-      if (!(now.isBefore(cd)) || now.difference(cd).inHours < minHours) {
-        tdl!.setUrgent(tdl![i], true);
-      }
+      if ((!(now.isBefore(cd)) || now.difference(cd).inHours < minHours) &&
+          !tdl![i].is_done) tdl!.setUrgent(tdl![i], true);
+
     }
   }
 
