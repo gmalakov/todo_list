@@ -56,6 +56,22 @@ class _TodoListState extends State<TodoList> {
     return DateTime(dtl[2], dtl[1], dtl[0], ttl[0], ttl[1], ttl[2]);
   }
 
+  DropdownButton _dropDown(void Function(dynamic) f) => DropdownButton(
+          items: [
+            DropdownMenuItem<String>(value: 'en', child: Text('English')),
+            DropdownMenuItem<String>(value: 'bg', child: Text('Български')),
+          ],
+          value: layout,
+          icon: const Icon(Icons.arrow_downward),
+          iconSize: 24,
+          elevation: 16,
+          style: const TextStyle(color: Colors.deepPurple),
+          underline: Container(
+            height: 2,
+            color: Colors.deepPurpleAccent,
+          ),
+          onChanged: f);
+
   Widget _buildItem(BuildContext context, int index) {
     final todo = tdl![index];
 
@@ -81,7 +97,11 @@ class _TodoListState extends State<TodoList> {
                       todo.is_urgent ? Color(0xFFE57373) : Color(0xFFA5D6A7),
                   checkColor: Colors.red,
                   subtitle: Row(textDirection: TextDirection.ltr, children: [
-                    Expanded(child: Text(todo.description)),
+                    IconButton(
+                        icon: Icon(Icons.view_list),
+                        onPressed: () {
+                          _displayText(context, todo.description);
+                        }),
                     IconButton(
                       icon: Icon(Icons.delete),
                       onPressed: () {
@@ -119,7 +139,6 @@ class _TodoListState extends State<TodoList> {
       final cd = tdl![i].created;
       if ((!(now.isBefore(cd)) || now.difference(cd).inHours < minHours) &&
           !tdl![i].is_done) tdl!.setUrgent(tdl![i], true);
-
     }
   }
 
@@ -133,34 +152,41 @@ class _TodoListState extends State<TodoList> {
               appBar: AppBar(
                   title: Row(children: [
                 Expanded(child: Text('Language')),
-                DropdownButton(
-                    items: [
-                      DropdownMenuItem<String>(
-                          value: 'en', child: Text('English')),
-                      DropdownMenuItem<String>(
-                          value: 'bg', child: Text('Български')),
-                    ],
-                    value: layout,
-                    icon: const Icon(Icons.arrow_downward),
-                    iconSize: 24,
-                    elevation: 16,
-                    style: const TextStyle(color: Colors.deepPurple),
-                    underline: Container(
-                      height: 2,
-                      color: Colors.deepPurpleAccent,
-                    ),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        layout = newValue!;
-                      });
-                    })
+                _dropDown((newValue) {
+                  setState(() {
+                    layout = newValue!;
+                  });
+                })
               ])),
               body: ListView.builder(
                 itemBuilder: _buildItem,
                 itemCount: tdl!.length,
-              ));
+              ),
+              floatingActionButton: FloatingActionButton(
+                onPressed: () {
+                  _displayDialog(context);
+                },
+                child: const Icon(Icons.add),
+                backgroundColor: Colors.green,
+              )
+          );
         });
   }
+
+  Future<AlertDialog?> _displayText(BuildContext context, String text) async =>
+      showDialog(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+              scrollable: true,
+              title: const Text('Description'),
+              content: Column(children: [
+                ListTile(title: Text(text)),
+                TextButton(
+                    child: const Text('OK'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    })
+              ])));
 
   // display a dialog for the user to enter items
   Future<AlertDialog?> _displayDialog(BuildContext context,
@@ -198,40 +224,24 @@ class _TodoListState extends State<TodoList> {
             }
 
             return AlertDialog(
+              scrollable: true,
               title: const Text('Task'),
               content: Column(children: [
                 Row(children: [
                   Expanded(child: Text('Language')),
-                  DropdownButton(
-                      items: [
-                        DropdownMenuItem<String>(
-                            value: 'en', child: Text('English')),
-                        DropdownMenuItem<String>(
-                            value: 'bg', child: Text('Български')),
-                      ],
-                      value: layout,
-                      icon: const Icon(Icons.arrow_downward),
-                      iconSize: 24,
-                      elevation: 16,
-                      style: const TextStyle(color: Colors.deepPurple),
-                      underline: Container(
-                        height: 2,
-                        color: Colors.deepPurpleAccent,
-                      ),
-                      onChanged: (String? newValue) {
-                        setDialogState(() {
-                          if (newValue != null) {
-                            item = tdl!.getItem(item!, newValue);
-                            Navigator.of(context).pop();
-                            layout = newValue;
-                            tdl!.layout = newValue;
+                  _dropDown((newValue) {
+                    setDialogState(() {
+                      if (newValue != null) {
+                        item = tdl!.getItem(item!, newValue);
+                        Navigator.of(context).pop();
+                        layout = newValue;
+                        tdl!.layout = newValue;
 
-                            if (item != null)
-                              _displayDialog(context, item: item);
-                          } else
-                            print('Error getting right layout!');
-                        });
-                      })
+                        if (item != null) _displayDialog(context, item: item);
+                      } else
+                        print('Error getting right layout!');
+                    });
+                  })
                 ]),
                 TextField(
                   controller: TextEditingController(text: title),
@@ -242,7 +252,7 @@ class _TodoListState extends State<TodoList> {
                 ),
                 TextField(
                   keyboardType: TextInputType.multiline,
-                  maxLines: null,
+                  maxLines: 3,
                   controller: TextEditingController(text: body),
                   decoration: const InputDecoration(labelText: 'Description'),
                   onChanged: (val) {
@@ -310,6 +320,8 @@ class _TodoListState extends State<TodoList> {
                           ..setDone(item!, is_done)
                           ..setCreated(item!, currentDate);
                     });
+
+                    tdl!.save();
                   },
                 ),
                 // cancel button

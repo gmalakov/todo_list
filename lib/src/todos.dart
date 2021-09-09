@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:convert';
 
 // import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 
 class ToDoItem {
@@ -26,7 +28,9 @@ class ToDoItem {
 
   set created(DateTime dt) => created_at = dt.toUtc().millisecondsSinceEpoch;
 
-  ToDoItem();
+  ToDoItem() {
+    created = DateTime.now();
+  }
 
   factory ToDoItem.fromMap(Map m) => ToDoItem()
     ..title = m[$title] ?? ''
@@ -113,6 +117,21 @@ class ToDoList {
 
   bool isLoaded(String layout) => _loaded[layout] ?? false;
 
+  Future<bool> save() async {
+    final dapp = await getApplicationDocumentsDirectory();
+    try {
+      for (final k in _items.keys) {
+        final res = {'todos': _items[k]!.map((el) => el.toJson()).toList()};
+        await File('${dapp.path}/${fPath(k)}')
+            .writeAsString(json.encode(res));
+      }
+    } catch (e) {
+      print('Error saving todos ! \n $e');
+      return false;
+    }
+    return true;
+  }
+
   Future<List<ToDoItem>> load([String layout = 'en']) async {
     ///Set layout and init items
     this.layout = layout;
@@ -120,7 +139,18 @@ class ToDoList {
     if (!isLoaded(layout))
       try {
         _loaded[layout] = true;
-        final response = await rootBundle.loadString(fPath(layout));
+
+        late String response;
+        final dapp = await getApplicationDocumentsDirectory();
+        ///File exists in documents ?
+        final f = File('${dapp.path}/${fPath(layout)}');
+        if (!f.existsSync()) {
+          ///No get it from assets
+          response = await rootBundle.loadString(fPath(layout));
+          await f.writeAsString(response);
+        } else
+          response = await f.readAsString();
+
         final m = json.decode(response);
         if (m is Map && m.containsKey('todos'))
           _items[layout] = m['todos']
