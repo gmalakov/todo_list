@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-// import 'package:flutter/services.dart';
+import 'debouncer.dart';
 import 'todos.dart' as d;
 
 const minHours = 1;
@@ -10,6 +10,8 @@ class TodoList extends StatefulWidget {
   static String layout = 'en';
   static d.ToDoList? tdl;
   static Timer? sch;
+  static DeBouncer deb = DeBouncer(const Duration(milliseconds: 250));
+  static double br = 0;
 
   @override
   _TodoListState createState() => _TodoListState();
@@ -25,9 +27,9 @@ class _TodoListState extends State<TodoList> {
   set layout(String l) => TodoList.layout = l;
 
   void _toggleTodo(d.ToDoItem todo, bool? is_done) {
-    setState(() {
+    TodoList.deb.execute(() => setState(() {
       tdl!.setDone(todo, is_done ?? false);
-    });
+    }));
   }
 
   String formatDate(DateTime? dt) => dt != null
@@ -74,13 +76,13 @@ class _TodoListState extends State<TodoList> {
 
   Widget _buildItem(BuildContext context, int index) {
     final todo = tdl![index];
+    Timer(const Duration(milliseconds: 300), () => TodoList.br=1);
 
-    return Padding(
-        padding: EdgeInsets.all(8),
+    return AnimatedOpacity(opacity: TodoList.br,  curve: Curves.easeInOut,
+        duration: const Duration(milliseconds: 600),
+        child : Padding(
+        padding: EdgeInsets.all(2),
         child: Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.0),
-            ),
             child: Padding(
                 padding: EdgeInsets.all(11),
                 child: CheckboxListTile(
@@ -94,8 +96,8 @@ class _TodoListState extends State<TodoList> {
                     style: TextStyle(fontSize: 18),
                   ),
                   tileColor:
-                      todo.is_urgent ? Color(0xFFE57373) : Color(0xFFA5D6A7),
-                  checkColor: Colors.red,
+                      todo.is_urgent ? Color(0xFCFA5252) : Color(0xFFA5D6A7),
+                  // checkColor: Colors.red,
                   subtitle: Row(textDirection: TextDirection.ltr, children: [
                     IconButton(
                         icon: Icon(Icons.view_list),
@@ -119,7 +121,7 @@ class _TodoListState extends State<TodoList> {
                   onChanged: (bool? isChecked) => _toggleTodo(todo, isChecked),
                 )),
             semanticContainer: true,
-            shadowColor: Colors.blueGrey));
+            shadowColor: Colors.blueGrey)));
   }
 
   @override
@@ -140,6 +142,7 @@ class _TodoListState extends State<TodoList> {
       if ((!(now.isBefore(cd)) || now.difference(cd).inHours < minHours) &&
           !tdl![i].is_done) tdl!.setUrgent(tdl![i], true);
     }
+    TodoList.deb.execute(() => setState(() {}));
   }
 
   Widget build(BuildContext context) {
@@ -153,10 +156,10 @@ class _TodoListState extends State<TodoList> {
                   title: Row(children: [
                 Expanded(child: Text('Language')),
                 _dropDown((newValue) {
-                  setState(() {
-                    layout = newValue!;
-                  });
-                })
+                  layout = newValue!;
+                  TodoList.deb.execute(() => setState(() {}));
+
+                  })
               ])),
               body: ListView.builder(
                 itemBuilder: _buildItem,
