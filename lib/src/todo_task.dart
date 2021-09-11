@@ -11,7 +11,7 @@ class TodoList extends StatefulWidget {
   static d.ToDoList? tdl;
   static Timer? sch;
   static DeBouncer deb = DeBouncer(const Duration(milliseconds: 250));
-  static double br = 0;
+  static double br = 0.1;
 
   @override
   _TodoListState createState() => _TodoListState();
@@ -78,7 +78,7 @@ class _TodoListState extends State<TodoList> {
     final todo = tdl![index];
     Timer(const Duration(milliseconds: 300), () => TodoList.br=1);
 
-    return AnimatedOpacity(opacity: TodoList.br,  curve: Curves.easeInOut,
+    return AnimatedOpacity(opacity: TodoList.br,  curve: Curves.easeIn,
         duration: const Duration(milliseconds: 600),
         child : Padding(
         padding: EdgeInsets.all(2),
