@@ -11,7 +11,6 @@ class TodoList extends StatefulWidget {
   static d.ToDoList? tdl;
   static Timer? sch;
   static DeBouncer deb = DeBouncer(const Duration(milliseconds: 250));
-  static double br = 0.1;
 
   @override
   _TodoListState createState() => _TodoListState();
@@ -27,9 +26,15 @@ class _TodoListState extends State<TodoList> {
   set layout(String l) => TodoList.layout = l;
 
   void _toggleTodo(d.ToDoItem todo, bool? is_done) {
-    TodoList.deb.execute(() => setState(() {
-      tdl!.setDone(todo, is_done ?? false);
-    }));
+    TodoList.deb.execute(() {
+      todo.bright = 0;
+      setState(() {});
+      Timer(const Duration(milliseconds: 310), () {
+        todo.bright = 1;
+        tdl!.setDone(todo, is_done ?? false);
+        setState(() {});
+      });
+    });
   }
 
   String formatDate(DateTime? dt) => dt != null
@@ -76,52 +81,57 @@ class _TodoListState extends State<TodoList> {
 
   Widget _buildItem(BuildContext context, int index) {
     final todo = tdl![index];
-    Timer(const Duration(milliseconds: 300), () => TodoList.br=1);
 
-    return AnimatedOpacity(opacity: TodoList.br,  curve: Curves.easeIn,
-        duration: const Duration(milliseconds: 600),
-        child : Padding(
-        padding: EdgeInsets.all(2),
-        child: Card(
-            child: Padding(
-                padding: EdgeInsets.all(11),
-                child: CheckboxListTile(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  value: todo.is_done,
-                  secondary: Icon(todo.is_urgent ? Icons.warning : Icons.task),
-                  title: Text(
-                    '${todo.title} ${formatDate(todo.created)}',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  tileColor:
-                      todo.is_urgent ? Color(0xFCFA5252) : Color(0xFFA5D6A7),
-                  // checkColor: Colors.red,
-                  subtitle: Row(textDirection: TextDirection.ltr, children: [
-                    IconButton(
-                        icon: Icon(Icons.view_list),
-                        onPressed: () {
-                          _displayText(context, todo.description);
-                        }),
-                    IconButton(
-                      icon: Icon(Icons.delete),
-                      onPressed: () {
-                        setState(() {
-                          tdl!.remove(todo);
-                        });
-                      },
-                    ),
-                    IconButton(
-                        icon: Icon(Icons.edit),
-                        onPressed: () {
-                          _displayDialog(context, item: todo);
-                        })
-                  ]),
-                  onChanged: (bool? isChecked) => _toggleTodo(todo, isChecked),
-                )),
-            semanticContainer: true,
-            shadowColor: Colors.blueGrey)));
+    return AnimatedOpacity(
+        opacity: todo.bright,
+        curve: Curves.easeIn,
+        duration: const Duration(milliseconds: 300),
+        child: Padding(
+            padding: EdgeInsets.all(2),
+            child: Card(
+                child: Padding(
+                    padding: EdgeInsets.all(11),
+                    child: CheckboxListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      value: todo.is_done,
+                      secondary:
+                          Icon(todo.is_urgent ? Icons.warning : Icons.task),
+                      title: Text(
+                        '${todo.title} ${formatDate(todo.created)}',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                      tileColor: todo.is_urgent
+                          ? Color(0xFCFA5252)
+                          : Color(0xFFA5D6A7),
+                      // checkColor: Colors.red,
+                      subtitle:
+                          Row(textDirection: TextDirection.ltr, children: [
+                        IconButton(
+                            icon: Icon(Icons.view_list),
+                            onPressed: () {
+                              _displayText(context, todo.description);
+                            }),
+                        IconButton(
+                          icon: Icon(Icons.delete),
+                          onPressed: () {
+                            setState(() {
+                              tdl!.remove(todo);
+                            });
+                          },
+                        ),
+                        IconButton(
+                            icon: Icon(Icons.edit),
+                            onPressed: () {
+                              _displayDialog(context, item: todo);
+                            })
+                      ]),
+                      onChanged: (bool? isChecked) =>
+                          _toggleTodo(todo, isChecked),
+                    )),
+                semanticContainer: true,
+                shadowColor: Colors.blueGrey)));
   }
 
   @override
@@ -139,8 +149,10 @@ class _TodoListState extends State<TodoList> {
     final now = DateTime.now().toUtc();
     for (int i = 0; i < tdl!.length; i++) {
       final cd = tdl![i].created;
-      if ((!(now.isBefore(cd)) || now.difference(cd).inHours < minHours) &&
-          !tdl![i].is_done) tdl!.setUrgent(tdl![i], true);
+      final urg = (now.isAfter(cd) || now.difference(cd).inHours < minHours) &&
+          !tdl![i].is_done;
+
+      tdl!.setUrgent(tdl![i], urg);
     }
     TodoList.deb.execute(() => setState(() {}));
   }
@@ -158,8 +170,7 @@ class _TodoListState extends State<TodoList> {
                 _dropDown((newValue) {
                   layout = newValue!;
                   TodoList.deb.execute(() => setState(() {}));
-
-                  })
+                })
               ])),
               body: ListView.builder(
                 itemBuilder: _buildItem,
@@ -171,8 +182,7 @@ class _TodoListState extends State<TodoList> {
                 },
                 child: const Icon(Icons.add),
                 backgroundColor: Colors.green,
-              )
-          );
+              ));
         });
   }
 

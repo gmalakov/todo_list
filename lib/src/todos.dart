@@ -19,6 +19,9 @@ class ToDoItem {
   bool is_done = false;
   int created_at = 0;
 
+  ///Just for fading
+  double bright = 1;
+
   DateTime get created {
     final cr =
         DateTime.fromMillisecondsSinceEpoch(created_at, isUtc: true).toLocal();
